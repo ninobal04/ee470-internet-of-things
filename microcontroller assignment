@@ -1,0 +1,133 @@
+#include <Arduino.h>
+
+//-----------------------
+// Title: MICROCONTROLLER ASSIGNMENT
+// ------------ 
+// Program Detail
+//-------------
+// Purpose: Turn on different modules depending on lux level
+// Inputs: Light
+// Outputs: Lux, RGB Light, Buzzer Noise
+// Date: 09/29/2025
+// Compiler: Platform IO
+// Author: Antonino Balistreri
+// Versions: 1.0
+//
+//-------------
+// File Dependencies: N/A
+//-------------
+// Main Program
+// ------------
+
+// Choose your LED type:
+const bool COMMON_ANODE = false;   // set true if your RGB LED is common-anode
+
+// Lux threshold: below -> buzzer ON, above -> LED fades white→red
+int luxThreshold = 190;      // TUNE FOR DIFFERENT LIGHT LEVELS
+
+// Expected max lux
+const int LUX_MAX = 1000;
+
+/*** ======= PINOUT (NodeMCU ESP-12E) ======= ***/
+// Analog light sensor (LDR divider)
+const int PIN_LDR   = A0;   // ADC 0–1023 (A0 handles 0–3.3V on NodeMCU boards)
+
+// Buzzer
+const int PIN_BUZZ  = D5;   // GPIO14
+
+// RGB LED pins
+const int PIN_R     = D6;   // GPIO12
+const int PIN_G     = D7;   // GPIO13
+const int PIN_B     = D8;   // GPIO15
+
+// Internal
+const int PWM_MAX = 1023;
+
+// Write RGB considering LED type
+void setRGB(int r, int g, int b) {
+  r = constrain(r, 0, PWM_MAX);
+  g = constrain(g, 0, PWM_MAX);
+  b = constrain(b, 0, PWM_MAX);
+
+  if (COMMON_ANODE) {
+    r = PWM_MAX - r;
+    g = PWM_MAX - g;
+    b = PWM_MAX - b;
+  }
+  analogWrite(PIN_R, r);
+  analogWrite(PIN_G, g);
+  analogWrite(PIN_B, b);
+}
+
+// Very rough mapping from ADC -> "lux-like" number for UI/thresholding.
+// Calibrate later using your phone lux app if needed.
+int readLuxApprox() {
+  int adc = analogRead(PIN_LDR);
+  // Map darker (low adc) -> low lux, brighter (high adc) -> high lux
+  int lux = map(adc, 0, 1023, 0, LUX_MAX);
+  return lux;
+}
+
+void buzzerOn(bool on) {
+  digitalWrite(PIN_BUZZ, on ? HIGH : LOW);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_BUZZ, OUTPUT);
+  pinMode(PIN_R, OUTPUT);
+  pinMode(PIN_G, OUTPUT);
+  pinMode(PIN_B, OUTPUT);
+
+  // Start LED white
+  setRGB(PWM_MAX, PWM_MAX, PWM_MAX);
+
+  Serial.println();
+  Serial.println(F("EE470 Light → Buzzer/LED Demo (ESP8266)"));
+  Serial.println(F("Type 'B' to buzz for ~5s. Type 'T###' to set threshold (e.g., T350)."));
+}
+
+void loop() {
+  // ---- Read sensor and estimate lux ----
+  int lux = readLuxApprox();
+  Serial.print(F("Lux: "));
+  Serial.println(lux);
+
+  // ---- Dark = Turn Buzzer On ----
+  if (lux < luxThreshold) {
+    buzzerOn(true);
+  } else {
+    buzzerOn(false);
+
+    // ---- Bright = Fade to Red ----
+    // Keep red at max, reduce G and B from white toward 0 as lux rises.
+    int gb = map(lux, luxThreshold, LUX_MAX, PWM_MAX, 0);
+    gb = constrain(gb, 0, PWM_MAX);
+    setRGB(PWM_MAX, gb, gb);
+  }
+
+  // ---- Manual buzzer test  ----
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == 'B' || c == 'b') {
+      Serial.println(F("Buzzer test for 5 seconds..."));
+      buzzerOn(true);
+      delay(5000);
+      buzzerOn(false);
+    } else if (c == 'T' || c == 't') {
+      // read number like T420
+      String s = Serial.readStringUntil('\n');
+      s.trim();
+      int v = s.toInt();
+      if (v > 0) {
+        luxThreshold = v;
+        Serial.print(F("New luxThreshold: "));
+        Serial.println(luxThreshold);
+      } else {
+        Serial.println(F("Usage: T<number>  e.g., T350"));
+      }
+    }
+  }
+
+  delay(200);
+}
