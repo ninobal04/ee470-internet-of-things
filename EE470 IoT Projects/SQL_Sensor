@@ -1,0 +1,94 @@
+// SQL Code for Adding Content to my Sensor Database
+// Antonino R Balistreri
+
+-- Create Sensor Register Table
+CREATE TABLE sensor_register (
+  node_name    VARCHAR(10)  NOT NULL,
+  manufacturer VARCHAR(10)  NOT NULL,
+  longitude    DECIMAL(15,10) NOT NULL,  -- allows ± values, up to 15 total digits
+  latitude     DECIMAL(15,10) NOT NULL,  -- allows ± values, up to 15 total digits
+  PRIMARY KEY (node_name)
+);
+
+-- Create Sensor Data Table
+CREATE TABLE sensor_data (
+  node_name     VARCHAR(10)  NOT NULL,
+  time_received DATETIME     NOT NULL,
+  temperature   DECIMAL(6,2) NOT NULL,   -- up to 6 positions total, 2 after decimal
+  humidity      DECIMAL(6,2) NOT NULL,   -- up to 6 positions total, 2 after decimal
+
+  -- Constraints from Requirements
+  CONSTRAINT chk_temp CHECK (temperature BETWEEN -10 AND 100),
+  CONSTRAINT chk_humi CHECK (humidity BETWEEN 0 AND 100),
+
+  -- Only registered nodes can send data
+  CONSTRAINT fk_node FOREIGN KEY (node_name)
+    REFERENCES sensor_register(node_name)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+
+  -- Make each reading unique per node & time
+  PRIMARY KEY (node_name, time_received)
+);
+
+--------------------------------------------------------------------------------------------------
+
+-- Registering 5 different sensors (totally random)
+INSERT INTO sensor_register (node_name, manufacturer, longitude, latitude) VALUES
+('node_1','Acme',   -73.985656, 40.748433),
+('node_2','Globex', -0.127758,  51.507351),
+('node_3','Initech',139.691711, 35.689487),
+('node_4','Umbrella',2.352222,  48.856613),
+('node_5','Soylent', -118.243683,34.052235);
+
+-- Insert data into the sensot data tables as per the requirements
+-- node_1 : 11:00, 11:30, 12:00, 12:30
+INSERT INTO sensor_data (node_name, time_received, temperature, humidity) VALUES
+('node_1', '2022-10-01 11:00:00', 22.5, 45.0),
+('node_1', '2022-10-01 11:30:00', 23.0, 46.5),
+('node_1', '2022-10-01 12:00:00', 23.7, 44.8),
+('node_1', '2022-10-01 12:30:00', 24.1, 43.2);
+
+-- node_2
+INSERT INTO sensor_data VALUES
+('node_2', '2022-10-01 11:00:00', 18.2, 55.1),
+('node_2', '2022-10-01 11:30:00', 18.6, 54.3),
+('node_2', '2022-10-01 12:00:00', 19.1, 53.0),
+('node_2', '2022-10-01 12:30:00', 19.4, 52.2);
+
+-- node_3
+INSERT INTO sensor_data VALUES
+('node_3', '2022-10-01 11:00:00', 26.0, 60.0),
+('node_3', '2022-10-01 11:30:00', 26.3, 59.2),
+('node_3', '2022-10-01 12:00:00', 26.7, 58.5),
+('node_3', '2022-10-01 12:30:00', 27.2, 57.8);
+
+-- node_4
+INSERT INTO sensor_data VALUES
+('node_4', '2022-10-01 11:00:00', 15.5, 50.0),
+('node_4', '2022-10-01 11:30:00', 16.0, 49.4),
+('node_4', '2022-10-01 12:00:00', 16.4, 48.8),
+('node_4', '2022-10-01 12:30:00', 16.9, 48.1);
+
+-- node_5
+INSERT INTO sensor_data VALUES
+('node_5', '2022-10-01 11:00:00', 21.0, 40.0),
+('node_5', '2022-10-01 11:30:00', 21.6, 39.5),
+('node_5', '2022-10-01 12:00:00', 22.0, 38.7),
+('node_5', '2022-10-01 12:30:00', 22.4, 38.0);
+
+--------------------------------------------------------------------------------------------------
+
+-- Create a VIEW for the sensor combined table
+CREATE VIEW sensor_combined AS
+SELECT
+  d.node_name,
+  r.manufacturer,
+  r.longitude,
+  r.latitude,
+  d.time_received,
+  d.temperature,
+  d.humidity
+FROM sensor_data AS d
+JOIN sensor_register AS r
+  ON d.node_name = r.node_name;
