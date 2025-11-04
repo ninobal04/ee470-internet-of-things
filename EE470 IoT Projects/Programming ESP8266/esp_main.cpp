@@ -1,3 +1,45 @@
+/*
+ * ----------------------------------------------
+ * Project/Program Name : IoT Sensor Data Logger (ESP8266)
+ * File Name            : esp_main.cpp
+ * Author               : Antonino Balistreri
+ * Date                 : 11/03/2025
+ * Version              : 1.0
+ *
+ * Purpose:
+ *   This program connects an ESP8266-NodeMCU to a Wi-Fi network
+ *   and transmits temperature, humidity, and tilt-sensor data to
+ *   a remote PHP server over HTTPS. It uses button and tilt inputs
+ *   to trigger data uploads from node_1 and node_2.
+ *
+ * Inputs:
+ *   - DHT11 sensor (HW-507) for temperature and humidity on pin D5
+ *   - Pushbutton (HW-483) for node_1 trigger on pin D7
+ *   - Tilt sensor (HW-505) for node_2 trigger on pin D6
+ *
+ * Outputs:
+ *   - HTTPS GET request sent to Hostinger PHP endpoint
+ *   - Serial monitor output for diagnostics and status messages
+ *
+ * Example Application:
+ *   Pressing the button or tilting the switch causes the ESP8266
+ *   to read the DHT11 sensor, obtain the current time from timeapi.io,
+ *   and upload the data to the online MySQL database.
+ *
+ * Dependencies:
+ *   - ESP8266WiFi library
+ *   - ESP8266HTTPClient library
+ *   - WiFiClientSecure (BearSSL)
+ *   - DHT sensor library
+ *
+ * Usage Notes:
+ *   - Must connect to a 2.4 GHz network (ESP8266 limitation)
+ *   - Requires a registered node name in the server database
+ *   - Time is retrieved from timeapi.io API; fallback to worldtimeapi.org
+ * ----------------------------------------------
+ */
+
+
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
